@@ -1,0 +1,106 @@
+---
+title: "NYCTaxi"
+author: "이광효(2018-02454)"
+format: dashboard
+execute: 
+  enabled: true
+  cache: false
+  freeze: false
+---
+
+```{python}
+#| output: false
+# 여기에 온갖코드를 넣음
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.io as pio
+
+df = pd.read_csv("https://raw.githubusercontent.com/guebin/DV2023/main/posts/NYCTaxi.csv")
+df_feature = df.assign(
+    log_trip_duration = np.log(df.trip_duration),
+    pickup_datetime = df.pickup_datetime.apply(pd.to_datetime),
+    dropoff_datetime = df.dropoff_datetime.apply(pd.to_datetime),
+    dist = np.sqrt((df.pickup_latitude-df.dropoff_latitude)**2 + (df.pickup_longitude-df.dropoff_longitude)**2),
+    #---#
+    vendor_id = df.vendor_id.map({1:'A',2:'B'})
+).assign(
+    speed = lambda df: df.dist / df.trip_duration,
+    pickup_hour = lambda df: df.pickup_datetime.dt.hour,
+    dropoff_hour = lambda df: df.dropoff_datetime.dt.hour,
+    dayofweek = lambda df: df.pickup_datetime.dt.dayofweek
+)
+
+# 1-(1),(2),(3) 에 대응하는 plotly figure를 아래와 같은 이름으로 저장
+
+tidydata1 = df_feature.pivot_table(
+    index = 'pickup_hour',
+    columns = 'dayofweek',
+    values = 'speed',
+    aggfunc = 'mean'
+).stack().reset_index().rename({0:'speed_mean'},axis=1)
+
+tidydata1['dayofweek'] = tidydata1['dayofweek'].map({0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'})
+
+fig1 = px.density_heatmap(
+    data_frame=tidydata1,
+    x='pickup_hour',
+    y='dayofweek',
+    z='speed_mean',
+    nbinsx=24,
+    nbinsy=7,
+    height=400, 
+)
+
+fig1.update_layout(
+    xaxis_title='pickup 시간',
+    yaxis_title='요일',
+    coloraxis_colorbar_title='평균 속력',
+)
+
+tidydata2 = df_feature.pivot_table(
+    index = 'pickup_hour',
+    columns = 'dayofweek',
+    values = 'dist',
+    aggfunc = 'mean'
+).stack().reset_index().rename({0:'dist_mean'},axis=1)
+
+tidydata2['dayofweek'] = tidydata2['dayofweek'].map({0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'})
+
+
+fig2 = px.density_heatmap(
+    data_frame=tidydata2,
+    x='pickup_hour',
+    y='dayofweek',
+    z='dist_mean',
+    nbinsx=24,
+    nbinsy=7,
+    height=400
+)
+
+fig2.update_layout(
+    xaxis_title='pickup 시간',
+    yaxis_title='요일',
+    coloraxis_colorbar_title='평균이동거리',
+)
+# fig3 = ...
+```
+
+# 기말고사1-(1),(2)
+
+```{python}
+#| title: 요일,시간에 따른 평균속력 시각화        
+fig1.show()
+```
+
+```{python}
+#| title: 요일,시간에 따른 평균이동거리 시각화        
+fig2.show()
+```
+
+# 기말고사1-(3)
+
+```{python}
+#| title: 속력별 경로 시각화
+#fig3.show()
+```
